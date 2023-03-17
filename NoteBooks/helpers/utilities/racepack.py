@@ -8,6 +8,7 @@ import shutil
 from shapely.geometry import Polygon
 from PIL import Image, ImageDraw
 from datetime import datetime
+from .search import search_list
 
 __all__ = [
     "save_racepack",
@@ -79,6 +80,19 @@ def copy_file(src_path, dst_path):
     shutil.copy(src_path, dst_path)
 
 
+def write_optimals(optimal_path, optimal_data):
+    """Write the optimal data to a file."""
+
+    # Write to txt file
+    with open(optimal_path, 'w') as f:
+        f.write("[")
+        for line in optimal_data:
+            f.write("%s" % line)
+            if line != optimal_data[-1]:
+                f.write(",\n")
+        f.write("]")
+
+
 def save_polygon_as_png(poly, file_path, image_size=(200, 200), bg_color=(0, 0, 0, 0), line_color=(0, 0, 0)):
     """Save a Shapely Polygon object as a PNG image file."""
 
@@ -137,6 +151,10 @@ def save_racepack(racepack: dict):
                 'bin': f'./package.array.bin.npy',
                 'txt': f'./package.array.txt.py',
             },
+            'optimal': {
+                'fig': f'./package.optimal.fig.png',
+                'txt': f'./package.optimal.txt',
+            },
             'reward_function': f'./package.reward_function.py',
             'generator_notebook': f'./package.generator.ipynb',
         }
@@ -155,10 +173,6 @@ def save_racepack(racepack: dict):
 
     # create package folder
     _ = create_folder(package_dir)
-
-    # create track.package.json
-    package = dict_to_json(metedata)
-    write_file(f"{package_dir}/package.json", package)
 
     # create compressed pickle
     racepack['METADATA'] = metedata
@@ -194,5 +208,32 @@ def save_racepack(racepack: dict):
 
     # copy notebook used to generate racepack
     copy_file(racepack['GLOBAL_VARS']['NOTEBOOK'], f"{package_dir}/package.generator.ipynb")
+
+    # Search for look ahead package
+    look_ahead_package = search_list(
+        racepack['OPTIMAL_SPEED_VARS']['OPTIMAL_SPEED_TARGET_LOOK_AHEAD_POINTS'],
+        list(racepack['OPTIMAL_SPEED_VARS']['OPTIMAL_SPEED_VELOCITY'].keys()),
+    )
+    if len(look_ahead_package) > 1:
+        raise ValueError("Multiple look ahead packages found")
+    else:
+        look_ahead_name = look_ahead_package[0]
+        look_ahead_package = racepack['OPTIMAL_SPEED_VARS']['OPTIMAL_SPEED_VELOCITY'][look_ahead_package[0]]
+        metedata['details']['race_line']['optimal_time'] = look_ahead_package['TOTAL_TIME']
+        write_optimals(f"{package_dir}/package.optimal.txt", look_ahead_package['RACE_PACKAGE'])
+        as_json = look_ahead_package['ACTION_SPACE_E'][["steering","velocity"]].copy()
+        as_json = as_json.round(2)  # TODO: should this be 4; originally 4?
+        as_json.columns = ["steering_angle", "speed"]
+        as_json["index"] = as_json.index
+        as_json = json.dumps(json.loads(as_json.to_json(orient="records", lines=False)), indent=4)
+        write_file(f"{package_dir}/package.action_space.json", as_json)
+        racepack['OPTIMAL_SPEED_VARS']["OPTIMAL_SPEED_VELOCITY_FIGS"][look_ahead_name].savefig(f'{package_dir}/package.optimal.fig.png')
+
+
+
+    # create track.package.json
+    package = dict_to_json(metedata)
+    write_file(f"{package_dir}/package.json", package)
+
 
     return metedata
