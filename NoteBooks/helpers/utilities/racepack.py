@@ -10,7 +10,8 @@ from PIL import Image, ImageDraw
 from datetime import datetime
 
 __all__ = [
-    "save_racepack"
+    "save_racepack",
+    "load_package",
 ]
 
 
@@ -46,7 +47,7 @@ def create_compressed_pickle(file_path, data):
         pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-def load_compressed_pickle(file_path):
+def load_package(file_path):
     """Load a compressed pickle file into a dictionary."""
 
     with gzip.open(file_path, 'rb') as f:
@@ -78,11 +79,11 @@ def copy_file(src_path, dst_path):
     shutil.copy(src_path, dst_path)
 
 
-def save_polygon_as_png(poly, file_path, image_size=(200, 200), bg_color=(255, 255, 255), line_color=(0, 0, 0)):
+def save_polygon_as_png(poly, file_path, image_size=(200, 200), bg_color=(0, 0, 0, 0), line_color=(0, 0, 0)):
     """Save a Shapely Polygon object as a PNG image file."""
 
     # Create an image object
-    image = Image.new('RGB', image_size, bg_color)
+    image = Image.new('RGBA', image_size, bg_color)
 
     # Draw the polygon on the image
     draw = ImageDraw.Draw(image)
@@ -123,8 +124,8 @@ def save_racepack(racepack: dict):
                 'name': racepack['TRACK_VARS']['TRACK_FILE_NAME'],
                 'reduced': racepack['TRACK_VARS']['TRACK_REDUCE_PERC'],
                 'fig': f'../track.original.fig.png',
-                'poly': f'../track.original.poly.png',
-                'reduced_poly': f'./package.reduced.poly.png',
+                #'poly': f'../track.original.poly.png',
+                #'reduced_poly': f'./package.reduced.poly.png',
                 'overlay': f'./package.overlay.fig.png',
             },
             "race_line": {
@@ -137,7 +138,7 @@ def save_racepack(racepack: dict):
                 'txt': f'./package.array.txt.py',
             },
             'reward_function': f'./package.reward_function.py',
-
+            'generator_notebook': f'./package.generator.ipynb',
         }
     }
 
@@ -145,10 +146,11 @@ def save_racepack(racepack: dict):
     isCreated = create_folder(track_racepack_root)
     if isCreated:
         # save original track polygon
-        save_polygon_as_png(
-            racepack['TRACK_VARS']['TRACK_SHAPELY']['road_poly'],
-            f"{track_racepack_root}/track.original.poly.png"
-        )
+        # TODO: fix this, it generates a blank image
+        #save_polygon_as_png(
+        #    racepack['TRACK_VARS']['TRACK_SHAPELY']['road_poly'],
+        #    f"{track_racepack_root}/track.original.poly.png"
+        #)
         racepack['TRACK_VARS']['TRACK_FIGURE'].savefig(f'{track_racepack_root}/track.original.fig.png')
 
     # create package folder
@@ -174,16 +176,20 @@ def save_racepack(racepack: dict):
     )
 
     # save reduced track polygon
-    save_polygon_as_png(
-        racepack['TRACK_VARS']['TRACK_REDUCED_SHAPELY']['road_poly'],
-        f"{package_dir}/package.reduced.png"
-    )
+    # TODO: fix this, it generates a blank image
+    #save_polygon_as_png(
+    #    racepack['TRACK_VARS']['TRACK_REDUCED_SHAPELY']['road_poly'],
+    #    f"{package_dir}/package.reduced.poly.png"
+    #)
 
     # save overlay track figure
-    racepack['TRACK_VARS']['TRACK_FIGURE'].savefig(f'{package_dir}/package.overlay.fig.png')
+    racepack['TRACK_VARS']['TRACK_FIGURE_OVERLAY'].savefig(f'{package_dir}/package.overlay.fig.png')
 
     # save race line figure
     racepack['RACE_LINE_VARS']['RACE_LINE_IMPROVED_FIG'].savefig(f'{package_dir}/package.improved.raceline.fig.png')
 
     # copy reward function
     copy_file(racepack['GLOBAL_VARS']['REWARD_FUNCTION'], f"{package_dir}/package.reward_function.py")
+
+    # copy notebook used to generate racepack
+    copy_file(racepack['GLOBAL_VARS']['NOTEBOOK'], f"{package_dir}/package.generator.ipynb")
