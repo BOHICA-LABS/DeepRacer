@@ -4,3 +4,4 @@ from .convert import *
 from .plot import *
 from .curve import *
 from .raceline import *
+from .racepack import *
