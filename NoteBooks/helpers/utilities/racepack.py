@@ -161,6 +161,7 @@ def save_racepack(racepack: dict):
     write_file(f"{package_dir}/package.json", package)
 
     # create compressed pickle
+    racepack['METADATA'] = metedata
     create_compressed_pickle(f"{package_dir}/package.racepack.pickle.gz", racepack)
 
     # Write numpy array text to file
@@ -193,3 +194,5 @@ def save_racepack(racepack: dict):
 
     # copy notebook used to generate racepack
     copy_file(racepack['GLOBAL_VARS']['NOTEBOOK'], f"{package_dir}/package.generator.ipynb")
+
+    return metedata
